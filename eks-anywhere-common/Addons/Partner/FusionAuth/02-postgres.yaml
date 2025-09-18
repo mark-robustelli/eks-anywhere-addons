@@ -4,24 +4,16 @@ metadata:
   name: postgres
   namespace: fusionauth
 spec:
-  interval: 10m
-  timeout: 15m0s
-  install:
-    timeout: 15m0s
-    remediation:
-      retries: 3
-  upgrade:
-    timeout: 15m0s
-    remediation:
-      retries: 3
+  interval: 5m
   chart:
     spec:
-      chart: postgresql
-      version: 16.7.27
+      chart: postgresql           # <— NOT an oci:// URL
+      version: 16.7.27            # (optional pin; can omit)
       sourceRef:
         kind: HelmRepository
         name: bitnami-oci
         namespace: flux-system
+  targetNamespace: fusionauth
   values:
     auth:
       # Admin (superuser)

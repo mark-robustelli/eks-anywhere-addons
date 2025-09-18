@@ -5,15 +5,7 @@ metadata:
   namespace: fusionauth
 spec:
   interval: 10m
-  timeout: 15m0s
-  install:
-    timeout: 15m0s
-    remediation:
-      retries: 3
-  upgrade:
-    timeout: 15m0s
-    remediation:
-      retries: 3
+  timeout: 5m
 
   # Make FA wait on Postgres
   dependsOn:
@@ -28,17 +20,20 @@ spec:
         kind: HelmRepository
         name: fusionauth
         namespace: flux-system
-
+  targetNamespace: fusionauth
   values:
     # --- Database settings ---
     database:
       protocol: postgresql
-      host: postgres-postgresql.fusionauth.svc.cluster.local
+      host: fusionauth-postgres-postgresql.fusionauth.svc.cluster.local
       port: 5432
       name: fusionauth
       # Application user (least-priv)
-      user: postgres
-      password: changeMeSuperSecret
+      user: fauser
+      password: changeMeSuperSecret2
+      root:
+        user: postgres
+        password: changeMeSuperSecret
 
     # Use database search (no Elasticsearch)
     search:
