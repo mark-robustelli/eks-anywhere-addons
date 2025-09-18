@@ -26,7 +26,7 @@ spec:
     # ---------------------------
     database:
       protocol: postgresql
-      host: postgres-postgresql.fusionauth.svc.cluster.local
+      host: fusionauth-postgres-postgresql.fusionauth.svc.cluster.local
       port: 5432
       name: fusionauth
       user: fauser
@@ -42,6 +42,16 @@ spec:
     kickstart:
       enabled: false
 
+    app:
+      runtimeMode: development
+
+    # Simple exposure for EKS-A Docker
+    service:
+      type: NodePort
+      port: 9011
+
+    ingress:
+      enabled: false
     # (Optional) other chart values such as service, ingress, resources, etc.
     # service:
     #   type: ClusterIP
