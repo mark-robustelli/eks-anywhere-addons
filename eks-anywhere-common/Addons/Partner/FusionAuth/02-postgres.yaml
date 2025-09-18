@@ -19,7 +19,7 @@ spec:
       chart: postgresql
       version: 16.7.27
       sourceRef:
-        kind: HelmRepository
+        kind: OCIRepository
         name: bitnami-oci
         namespace: flux-system
   values:
