@@ -58,6 +58,24 @@ spec:
                "key": "bf69486b-4733-4470-a592-f1bfce7af580",
                "description": "Core API Key"
              }
+           ],
+           "requests": [
+             {
+               "method": "POST",
+               "url": "/api/user/registration",
+               "body": {
+                 "user": {
+                   "email": "#{adminEmail}",
+                   "password": "#{adminPassword}"
+                 },
+                 "registration": {
+                   "applicationId": "#{FUSIONAUTH_APPLICATION_ID}",
+                   "roles": [
+                     "admin"
+                   ]
+                 }
+               }
+             }
            ]
          }
 
