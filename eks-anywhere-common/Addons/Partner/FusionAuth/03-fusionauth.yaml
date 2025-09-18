@@ -12,9 +12,6 @@ spec:
     - name: postgres
       namespace: fusionauth
 
-  volumes:
-      - ./kickstart:/usr/local/fusionauth/kickstart
-
   chart:
     spec:
       chart: fusionauth
@@ -37,14 +34,14 @@ spec:
       root:
         user: postgres
         password: changeMeSuperSecret
-    
+
     # Use database search (no Elasticsearch)
     search:
       engine: database
 
     kickstart:
       enabled: true
-      
+
     app:
       runtimeMode: development
 
@@ -55,5 +52,4 @@ spec:
 
     ingress:
       enabled: false
-
 
