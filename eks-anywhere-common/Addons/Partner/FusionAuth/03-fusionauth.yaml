@@ -35,7 +35,9 @@ spec:
         user: postgres
         password: changeMeSuperSecret
 
-    runtimeMode: production
+    app:
+      runtimeMode: production
+      silentMode: "true"
 
     # Use database search (no Elasticsearch)
     search:
