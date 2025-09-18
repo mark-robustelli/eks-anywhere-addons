@@ -12,6 +12,9 @@ spec:
     - name: postgres
       namespace: fusionauth
 
+  volumes:
+      - ./kickstart:/usr/local/fusionauth/kickstart
+
   chart:
     spec:
       chart: fusionauth
