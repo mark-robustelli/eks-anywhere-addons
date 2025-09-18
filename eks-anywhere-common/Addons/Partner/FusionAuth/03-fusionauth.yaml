@@ -24,8 +24,8 @@ spec:
   values:
     # --- Database settings ---
     database:
-      protocol: postgresql
-      host: postgres-postgresql.fusionauth.svc.cluster.local
+      protocol: postgresqlyam
+      host: fusionauth-postgres-postgresql.fusionauth.svc.cluster.local
       port: 5432
       name: fusionauth
       # Application user (least-priv)
