@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: fusionauth
+
+# Make sure this Kustomization already includes your HelmRepository/HelmRelease resources below.
+resources:
+  - 01-namespace.yaml
+  - 04-fusionauth-helmrepository.yaml
+  - 05-bitnami-helmrepository.yaml
+  - 02-postgres.yaml
+  - 03-fusionauth.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+  - name: fusionauth-kickstart
+    files:
+      # Your repo layout (kickstart folder is at the same level as the YAML):
+      - kickstart/kickstart.json
+      - kickstart/css/styles.css
+
