@@ -38,17 +38,16 @@ spec:
     # Use database search (no Elasticsearch)
     search:
       engine: database
-    
+
     kickstart:
-    	enabled: true
-    
+      enabled: true
+
     app:
       runtimeMode: development
-        
+
     # Simple exposure for EKS-A Docker
     service:
       type: NodePort
     ingress:
       enabled: false
-      
-  
+
