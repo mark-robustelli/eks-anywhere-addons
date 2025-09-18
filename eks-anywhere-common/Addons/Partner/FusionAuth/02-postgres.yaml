@@ -10,7 +10,7 @@ spec:
       chart: postgresql           # <— NOT an oci:// URL
       version: 16.7.27            # (optional pin; can omit)
       sourceRef:
-        kind: OCIRepository
+        kind: HelmRepository
         name: bitnami-oci
         namespace: flux-system
   targetNamespace: fusionauth
