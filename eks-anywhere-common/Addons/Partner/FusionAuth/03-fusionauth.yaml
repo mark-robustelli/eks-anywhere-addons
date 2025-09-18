@@ -49,9 +49,7 @@ spec:
     service:
       type: NodePort
       port: 9011
-    fusionauth:
-      app:
-        externalPort: 9011
+
     ingress:
       enabled: false
 
