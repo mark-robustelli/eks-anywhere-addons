@@ -4,10 +4,9 @@ metadata:
   name: fusionauth
   namespace: fusionauth
 spec:
-  interval: 10m
+  interval: 5m
   timeout: 5m
 
-  # Make FA wait on Postgres
   dependsOn:
     - name: postgres
       namespace: fusionauth
@@ -15,34 +14,50 @@ spec:
   chart:
     spec:
       chart: fusionauth
-      # version: 1.59.1  # optional pin
       sourceRef:
         kind: HelmRepository
         name: fusionauth
         namespace: flux-system
+      # version: "*"  # optional: pin a version
 
-  targetNamespace: fusionauth
   values:
-    # --- Database settings ---
+    # ---------------------------
+    # Database settings (example)
+    # ---------------------------
     database:
       protocol: postgresql
-      host: fusionauth-postgres-postgresql.fusionauth.svc.cluster.local
+      host: postgres-postgresql.fusionauth.svc.cluster.local
       port: 5432
       name: fusionauth
-      # Application user (least-priv)
       user: fauser
       password: changeMeSuperSecret2
       root:
         user: postgres
-        password: changeMeSuperSecret
-   postRenderers:
+        password: changeMeSuperSecre
+
+    search:
+      engine: database
+
+    # Turn OFF the chart's native kickstart block to avoid an empty dir
+    kickstart:
+      enabled: false
+
+    # (Optional) other chart values such as service, ingress, resources, etc.
+    # service:
+    #   type: ClusterIP
+    #   port: 9011
+
+  # Post-renderer: patch the rendered Deployment to mount our ConfigMap
+  # and set FUSIONAUTH_APP_KICKSTART_FILE to the mounted JSON.
+  postRenderers:
     - kustomize:
         patchesStrategicMerge:
           - |
             apiVersion: apps/v1
             kind: Deployment
             metadata:
-              name: fusionauth-fusionauth       # <-- adjust if your release uses a different deploy name
+              # This matches the FusionAuth chart's default Deployment name
+              name: fusionauth-fusionauth
               namespace: fusionauth
             spec:
               template:
@@ -51,54 +66,22 @@ spec:
                     - name: kickstart
                       configMap:
                         name: fusionauth-kickstart
-                        # Map keys to nested paths so @{css/styles.css} works
                         items:
                           - key: kickstart.json
                             path: kickstart.json
                           - key: styles.css
                             path: css/styles.css
                   containers:
-                    - name: fusionauth           # <-- adjust if the container name differs
+                    # This matches the FusionAuth container name in the chart
+                    - name: fusionauth
                       env:
                         - name: FUSIONAUTH_APP_KICKSTART_FILE
                           value: /usr/local/fusionauth/kickstart/kickstart.json
-                        # (optional) helpful for demos:
+                        # Optional, helpful for demos
                         - name: FUSIONAUTH_APP_RUNTIME_MODE
                           value: development
                       volumeMounts:
                         - name: kickstart
                           mountPath: /usr/local/fusionauth/kickstart
                           readOnly: true
-                          
-    # Use database search (no Elasticsearch)
-    search:
-      engine: database
-
-    env:
-      - name: FUSIONAUTH_APP_KICKSTART_FILE
-        value: /usr/local/fusionauth/kickstart/kickstart.json
-
-    # 2) mount the ConfigMap as read-only files in the container
-    extraVolumes:
-      - name: kickstart
-        configMap:
-          name: fusionauth-kickstart
-    extraVolumeMounts:
-      - name: kickstart
-        mountPath: /usr/local/fusionauth/kickstart
-        readOnly: true
-
-    kickstart:
-      enabled: true
-
-    app:
-      runtimeMode: development
-
-    # Simple exposure for EKS-A Docker
-    service:
-      type: NodePort
-      port: 9011
-
-    ingress:
-      enabled: false
 
