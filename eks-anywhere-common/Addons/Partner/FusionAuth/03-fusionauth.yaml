@@ -57,18 +57,19 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: fusionauth-nodeport
+  name: fusionauth-externalip
   namespace: fusionauth
 spec:
-  type: NodePort
+  type: ClusterIP
+  externalIPs:
+    - 172.26.151.105        # VM's LAN IP (Hyper-V External switch)
   selector:
     app.kubernetes.io/name: fusionauth
     app.kubernetes.io/instance: fusionauth
   ports:
     - name: http
-      port: 9011        # cluster-internal service port
-      targetPort: 9011  # container port
-      nodePort: 30111   # fixed external port (must be 30000–32767)
+      port: 9011
+      targetPort: 9011
       protocol: TCP
 
 
