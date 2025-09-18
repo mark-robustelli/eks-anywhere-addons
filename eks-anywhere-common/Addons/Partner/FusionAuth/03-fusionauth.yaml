@@ -42,9 +42,6 @@ spec:
     kickstart:
       enabled: true
 
-    app:
-      runtimeMode: development
-
     # Simple exposure for EKS-A Docker
     service:
       type: NodePort
