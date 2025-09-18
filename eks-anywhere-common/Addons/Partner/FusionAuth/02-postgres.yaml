@@ -11,7 +11,7 @@ spec:
       version: 16.7.27            # (optional pin; can omit)
       sourceRef:
         kind: HelmRepository
-        name: bitnami
+        name: bitnami-oci
         namespace: flux-system
   targetNamespace: fusionauth
   values:

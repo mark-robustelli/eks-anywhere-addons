@@ -1,9 +1,15 @@
 apiVersion: source.toolkit.fluxcd.io/v1
-kind: HelmRepository
+kind: OCIRepository
 metadata:
-  name: bitnami
+  name: bitnami-oci
   namespace: flux-system
 spec:
-  interval: 1m0s
-  url: https://charts.bitnami.com/bitnami
+  interval: 1h
+  url: oci://registry-1.docker.io/bitnamicharts
+  # either pin an exact tag:
+  ref:
+    tag: 16.7.27
+  # or prefer a moving range:
+  # ref:
+  #   semver: 16.x
 
