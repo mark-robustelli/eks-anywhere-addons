@@ -39,6 +39,9 @@ spec:
     search:
       engine: database
     
+    kickstart:
+    	enabled: true
+    	
     app:
       runtimeMode: development
         
