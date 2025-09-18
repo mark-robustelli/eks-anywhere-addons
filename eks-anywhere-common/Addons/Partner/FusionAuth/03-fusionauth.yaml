@@ -4,9 +4,10 @@ metadata:
   name: fusionauth
   namespace: fusionauth
 spec:
-  interval: 5m
+  interval: 10m
   timeout: 5m
 
+  # Make FA wait on Postgres
   dependsOn:
     - name: postgres
       namespace: fusionauth
@@ -14,33 +15,32 @@ spec:
   chart:
     spec:
       chart: fusionauth
+      # version: 1.59.1  # optional pin
       sourceRef:
         kind: HelmRepository
         name: fusionauth
         namespace: flux-system
-      # version: "*"  # optional: pin a version
-
+  targetNamespace: fusionauth
   values:
-    # ---------------------------
-    # Database settings (example)
-    # ---------------------------
+    # --- Database settings ---
     database:
       protocol: postgresql
       host: fusionauth-postgres-postgresql.fusionauth.svc.cluster.local
       port: 5432
       name: fusionauth
+      # Application user (least-priv)
       user: fauser
       password: changeMeSuperSecret2
       root:
         user: postgres
-        password: changeMeSuperSecre
+        password: changeMeSuperSecret
 
+    # Use database search (no Elasticsearch)
     search:
       engine: database
 
-    # Turn OFF the chart's native kickstart block to avoid an empty dir
     kickstart:
-      enabled: false
+      enabled: true
 
     app:
       runtimeMode: development
@@ -52,53 +52,4 @@ spec:
 
     ingress:
       enabled: false
-    # (Optional) other chart values such as service, ingress, resources, etc.
-    # service:
-    #   type: ClusterIP
-    #   port: 9011
 
-  # Post-renderer: patch the rendered Deployment to mount our ConfigMap
-  # and set FUSIONAUTH_APP_KICKSTART_FILE to the mounted JSON.
-  postRenderers:
-    - kustomize:
-        patches:
-          - target:
-              group: apps
-              version: v1
-              kind: Deployment
-              name: fusionauth-fusionauth   # adjust if your Deployment name differs
-            patch: |
-              # add the ConfigMap-backed volume for kickstart files
-              - op: add
-                path: /spec/template/spec/volumes/-
-                value:
-                  name: kickstart
-                  configMap:
-                    name: fusionauth-kickstart
-                    items:
-                      - key: kickstart.json
-                        path: kickstart.json
-                      - key: styles.css
-                        path: css/styles.css
-
-              # mount it at /usr/local/fusionauth/kickstart
-              - op: add
-                path: /spec/template/spec/containers/0/volumeMounts/-
-                value:
-                  name: kickstart
-                  mountPath: /usr/local/fusionauth/kickstart
-                  readOnly: true
-
-              # set the env var so FusionAuth runs Kickstart
-              - op: add
-                path: /spec/template/spec/containers/0/env/-
-                value:
-                  name: FUSIONAUTH_APP_KICKSTART_FILE
-                  value: /usr/local/fusionauth/kickstart/kickstart.json
-
-              # optional: dev mode
-              - op: add
-                path: /spec/template/spec/containers/0/env/-
-                value:
-                  name: FUSIONAUTH_APP_RUNTIME_MODE
-                  value: development
