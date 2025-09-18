@@ -51,37 +51,44 @@ spec:
   # and set FUSIONAUTH_APP_KICKSTART_FILE to the mounted JSON.
   postRenderers:
     - kustomize:
-        patchesStrategicMerge:
-          - |
-            apiVersion: apps/v1
-            kind: Deployment
-            metadata:
-              # This matches the FusionAuth chart's default Deployment name
-              name: fusionauth-fusionauth
-              namespace: fusionauth
-            spec:
-              template:
-                spec:
-                  volumes:
-                    - name: kickstart
-                      configMap:
-                        name: fusionauth-kickstart
-                        items:
-                          - key: kickstart.json
-                            path: kickstart.json
-                          - key: styles.css
-                            path: css/styles.css
-                  containers:
-                    # This matches the FusionAuth container name in the chart
-                    - name: fusionauth
-                      env:
-                        - name: FUSIONAUTH_APP_KICKSTART_FILE
-                          value: /usr/local/fusionauth/kickstart/kickstart.json
-                        # Optional, helpful for demos
-                        - name: FUSIONAUTH_APP_RUNTIME_MODE
-                          value: development
-                      volumeMounts:
-                        - name: kickstart
-                          mountPath: /usr/local/fusionauth/kickstart
-                          readOnly: true
+        patches:
+          - target:
+              group: apps
+              version: v1
+              kind: Deployment
+              name: fusionauth-fusionauth   # adjust if your Deployment name differs
+            patch: |
+              # add the ConfigMap-backed volume for kickstart files
+              - op: add
+                path: /spec/template/spec/volumes/-
+                value:
+                  name: kickstart
+                  configMap:
+                    name: fusionauth-kickstart
+                    items:
+                      - key: kickstart.json
+                        path: kickstart.json
+                      - key: styles.css
+                        path: css/styles.css
 
+              # mount it at /usr/local/fusionauth/kickstart
+              - op: add
+                path: /spec/template/spec/containers/0/volumeMounts/-
+                value:
+                  name: kickstart
+                  mountPath: /usr/local/fusionauth/kickstart
+                  readOnly: true
+
+              # set the env var so FusionAuth runs Kickstart
+              - op: add
+                path: /spec/template/spec/containers/0/env/-
+                value:
+                  name: FUSIONAUTH_APP_KICKSTART_FILE
+                  value: /usr/local/fusionauth/kickstart/kickstart.json
+
+              # optional: dev mode
+              - op: add
+                path: /spec/template/spec/containers/0/env/-
+                value:
+                  name: FUSIONAUTH_APP_RUNTIME_MODE
+                  value: development
