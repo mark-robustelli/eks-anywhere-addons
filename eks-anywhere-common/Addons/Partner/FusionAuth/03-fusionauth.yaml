@@ -41,7 +41,10 @@ spec:
 
     kickstart:
       enabled: true
-
+      files:
+        kickstart.json |
+          {{ .Files.Get "kickstart/kickstart.json" }}
+          {{ .Files.Get "kickstart/css/styles.css" }}
     app:
       runtimeMode: development
 
