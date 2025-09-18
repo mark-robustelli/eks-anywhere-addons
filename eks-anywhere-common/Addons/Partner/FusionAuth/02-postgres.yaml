@@ -20,7 +20,7 @@ spec:
       version: 16.7.27
       sourceRef:
         kind: HelmRepository
-        name: bitnami-oci
+        name: bitnami
         namespace: flux-system
   values:
     auth:
