@@ -37,7 +37,7 @@ spec:
 
     app:
       runtimeMode: production
-      silentMode: "true"
+      silentMode: true
 
     # Use database search (no Elasticsearch)
     search:
