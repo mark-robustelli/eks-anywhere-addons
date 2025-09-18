@@ -41,7 +41,7 @@ spec:
     
     kickstart:
     	enabled: true
-    	
+    
     app:
       runtimeMode: development
         
