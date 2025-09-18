@@ -28,7 +28,7 @@ spec:
         kind: HelmRepository
         name: fusionauth
         namespace: flux-system
-
+  targetNamespace: fusionauth
   values:
     # --- Database settings ---
     database:

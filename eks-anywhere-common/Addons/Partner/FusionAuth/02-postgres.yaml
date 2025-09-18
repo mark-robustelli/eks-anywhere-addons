@@ -12,6 +12,8 @@ spec:
       sourceRef:
         kind: HelmRepository
         name: bitnami
+        namespace: flux-system
+  targetNamespace: fusionauth
   values:
     auth:
       # Admin (superuser)
