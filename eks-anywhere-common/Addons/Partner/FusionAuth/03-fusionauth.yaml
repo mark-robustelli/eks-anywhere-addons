@@ -35,28 +35,6 @@ spec:
         user: postgres
         password: changeMeSuperSecret
     
-    # 1) Tell FusionAuth where the kickstart file is:
-    extraEnv:
-      - name: FUSIONAUTH_APP_KICKSTART_FILE
-        value: /kickstart/kickstart.json
-
-    # 2) Mount the ConfigMap as a directory
-    extraVolumes:
-      - name: kickstart
-        configMap:
-          name: fusionauth-kickstart
-          # optional: only project exactly these two keys
-          items:
-            - key: kickstart.json
-              path: kickstart.json
-            - key: styles.css
-              path: styles.css
-
-    extraVolumeMounts:
-      - name: kickstart
-        mountPath: /kickstart
-        readOnly: true
-
     # Use database search (no Elasticsearch)
     search:
       engine: database
