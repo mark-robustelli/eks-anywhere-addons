@@ -47,7 +47,7 @@ spec:
 
     # Simple exposure for EKS-A Docker
     service:
-      type: ClusterIP
+      type: NodePort
       port: 9011
     ingress:
       enabled: false
