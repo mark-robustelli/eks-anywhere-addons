@@ -20,6 +20,7 @@ spec:
         kind: HelmRepository
         name: fusionauth
         namespace: flux-system
+
   targetNamespace: fusionauth
   values:
     # --- Database settings ---
@@ -34,10 +35,58 @@ spec:
       root:
         user: postgres
         password: changeMeSuperSecret
-
+   postRenderers:
+    - kustomize:
+        patchesStrategicMerge:
+          - |
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: fusionauth-fusionauth       # <-- adjust if your release uses a different deploy name
+              namespace: fusionauth
+            spec:
+              template:
+                spec:
+                  volumes:
+                    - name: kickstart
+                      configMap:
+                        name: fusionauth-kickstart
+                        # Map keys to nested paths so @{css/styles.css} works
+                        items:
+                          - key: kickstart.json
+                            path: kickstart.json
+                          - key: styles.css
+                            path: css/styles.css
+                  containers:
+                    - name: fusionauth           # <-- adjust if the container name differs
+                      env:
+                        - name: FUSIONAUTH_APP_KICKSTART_FILE
+                          value: /usr/local/fusionauth/kickstart/kickstart.json
+                        # (optional) helpful for demos:
+                        - name: FUSIONAUTH_APP_RUNTIME_MODE
+                          value: development
+                      volumeMounts:
+                        - name: kickstart
+                          mountPath: /usr/local/fusionauth/kickstart
+                          readOnly: true
+                          
     # Use database search (no Elasticsearch)
     search:
       engine: database
+
+    env:
+      - name: FUSIONAUTH_APP_KICKSTART_FILE
+        value: /usr/local/fusionauth/kickstart/kickstart.json
+
+    # 2) mount the ConfigMap as read-only files in the container
+    extraVolumes:
+      - name: kickstart
+        configMap:
+          name: fusionauth-kickstart
+    extraVolumeMounts:
+      - name: kickstart
+        mountPath: /usr/local/fusionauth/kickstart
+        readOnly: true
 
     kickstart:
       enabled: true
