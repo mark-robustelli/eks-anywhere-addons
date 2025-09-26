@@ -14,11 +14,14 @@ spec:
         name: bitnami-oci
         namespace: flux-system
   targetNamespace: fusionauth
+  valuesFrom:
+    - kind: Secret
+      name: postgres-auth
+      targetPath: auth.username
   values:
     auth:
-      # Admin (superuser)
-      username: postgres
-      password: changeMeSuperSecret
+      enablePostgresUser: true
+      existingSecret: postgres-auth
     primary:
       persistence:
         enabled: false  # disable PVCs for EKS-A docker dev env; set true if you have storageclass
