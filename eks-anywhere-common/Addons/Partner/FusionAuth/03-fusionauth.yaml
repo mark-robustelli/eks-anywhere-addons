@@ -57,7 +57,7 @@ spec:
            "variables": {
              "defaultTenantId": "d7d09513-a3f5-401c-9685-34ab6c552453",
              "adminEmail": "admin@fusionauth.io",
-             "adminPassword": "password"
+             "adminPassword": "password".
              "apiKey": "#{env.FA_API_KEY}"
            },
            "apiKeys": [
