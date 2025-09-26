@@ -21,11 +21,6 @@ spec:
         name: fusionauth
         namespace: flux-system
   targetNamespace: fusionauth
-  valuesFrom:
-  -kind: Secret
-    name: FA-EKS-A-Secrets
-    valuesKey: FA-root-db-username
-    targetPath: FA_ROOT_DB_USER
   values:
     # --- Database settings ---
     database:
@@ -37,7 +32,7 @@ spec:
       user: fauser
       password: changeMeSuperSecret2
       root:
-        user: FA_ROOT_DB_USER
+        user: postgres
         password: changeMeSuperSecret
 
     app:
