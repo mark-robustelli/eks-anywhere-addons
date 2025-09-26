@@ -33,7 +33,6 @@ spec:
       password: changeMeSuperSecret2
       root:
         user: postgres
-        password: changeMeSuperSecret
 
     app:
       runtimeMode: production
