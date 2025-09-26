@@ -36,10 +36,19 @@ spec:
       name: fusionauth
       existingSecret: fusionauth-secrets
       # Application user (least-priv)
-      user: fauser
-      password: changeMeSuperSecret2
+      userFromSecret:
+        name: fusionauth-secrets
+        key: FA_USER_USERNAME
+      passwordFromSecret:
+        name: fusionauth-secrets
+        key: FA_USER_PASSWORD
       root:
-        user: postgres
+        userFromSecret:
+          name: fusionauth-secrets
+          key: FA_ROOT_DB_USERNAME
+        passwordFromSecret:
+          name: fusionauth-secrets
+          key: FA_ROOT_DB_PASSWORD
 
     app:
       runtimeMode: production
