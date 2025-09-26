@@ -35,20 +35,10 @@ spec:
       port: 5432
       name: fusionauth
 
-      # Application user (least-priv)
-      userFromSecret:
-        name: fusionauth-secrets
-        key: FA_USER_USERNAME
-      passwordFromSecret:
-        name: fusionauth-secrets
-        key: FA_USER_PASSWORD
+      existingSecret: fusionauth-secrets
+      user: fauser
       root:
-        userFromSecret:
-          name: fusionauth-secrets
-          key: FA_ROOT_DB_USERNAME
-        passwordFromSecret:
-          name: fusionauth-secrets
-          key: FA_ROOT_DB_PASSWORD
+        user: postgres
 
     app:
       runtimeMode: production
