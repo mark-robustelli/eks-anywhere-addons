@@ -35,14 +35,13 @@ spec:
       serviceAccountName: fa-e2e-tester
       restartPolicy: Never
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
       containers:
         - name: runner
           # Debian-based so we can apt-get what we need
-          image: bitnami/kubectl:1.29-debian-12
+          image: bitnami/kubectl:1.29.3-debian-12-r0
           imagePullPolicy: IfNotPresent
           env:
             # >>>> EDIT these three if needed <<<<
@@ -51,7 +50,7 @@ spec:
             - name: GIT_BRANCH
               value: "mcr/add-fusionauth"
             - name: REL_PATH
-              value: "Addons/Partners/Common/FusionAuth"
+              value: "eks-anywhere-common/Addons/Partner/FusionAuth"
             # Optional: namespace where FA will deploy (defaults to 'fusionauth')
             - name: FA_NAMESPACE
               value: "fusionauth"
@@ -68,15 +67,31 @@ spec:
           args:
             - |
               echo "==> Installing test deps (git curl jq)…"
+              echo "==> Making Directory"
+              
+              mkdir -p /var/lib/apt/lists/partial
+              apt-get update -qq
+              
+              echo "==> Install Command"
+              apt-get install -y -qq curl jq git
+              
+              echo "==> Update Command"
               apt-get update -qq && apt-get install -y -qq git curl jq >/dev/null
 
+              echo "==> Update Complete"
+      
               work=/tmp/fa-e2e
               mkdir -p "$work"
               cd "$work"
 
               echo "==> Cloning $GIT_URL (branch: $GIT_BRANCH)…"
               git clone --depth=1 --branch "$GIT_BRANCH" "$GIT_URL" repo
-
+              
+              echo "==> Current working directory before cd:"
+              pwd
+              echo "==> Listing repo contents:"
+              ls -la repo
+              
               cd "repo/${REL_PATH}"
 
               echo "==> Applying FusionAuth stack from $(pwd)…"
@@ -134,6 +149,7 @@ spec:
               if [ -z "$api_key" ] && kubectl -n "$FALLBACK_SECRET_NS" get secret "$FALLBACK_SECRET_NAME" >/dev/null 2>&1; then
                 api_key=$(kubectl -n "$FALLBACK_SECRET_NS" get secret "$FALLBACK_SECRET_NAME" -o jsonpath="{.data.${FALLBACK_SECRET_KEY}}" | base64 -d 2>/dev/null || true)
               fi
+              echo "==> API KEY VALUE IS $api_key"
               if [ -z "$api_key" ]; then
                 echo "ERROR: Could not retrieve FusionAuth API key from Secrets." >&2
                 rc=1; goto_teardown=true
@@ -143,6 +159,7 @@ spec:
               if [ "${goto_teardown:-}" != "true" ]; then
                 echo "==> Probing FusionAuth API (expecting HTTP 200 and a tenants array)…"
                 base="http://${svc_name}.${ns}.svc.cluster.local:${port}"
+                echo "BASE URL is $base"
                 # /api/tenant requires API key and is a stable, low-risk read
                 http=$(curl -sS -w '%{http_code}' -o /tmp/fa.json \
                   -H "Authorization: $api_key" \
@@ -169,4 +186,7 @@ spec:
               kubectl delete -f . --timeout=5m --ignore-not-found || true
 
               echo "==> Cleanup complete."
+              
+              ##echo "Tests finished with exit code ${rc:-1}. Sleeping for debug..."
+              ##sleep infinity
               exit ${rc:-1}
