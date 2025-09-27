@@ -1,0 +1,192 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fa-e2e
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fa-e2e-tester
+  namespace: fa-e2e
+---
+# Broad rights for an ephemeral test runner. Scope this down later if you prefer.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: fa-e2e-tester-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: fa-e2e-tester
+    namespace: fa-e2e
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fusionauth-e2e
+  namespace: fa-e2e
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      serviceAccountName: fa-e2e-tester
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
+      containers:
+        - name: runner
+          # Debian-based so we can apt-get what we need
+          image: bitnami/kubectl:1.29.3-debian-12-r0
+          imagePullPolicy: IfNotPresent
+          env:
+            # >>>> EDIT these three if needed <<<<
+            - name: GIT_URL
+              value: "https://github.com/mark-robustelli/eks-anywhere-addons.git"
+            - name: GIT_BRANCH
+              value: "mcr/add-fusionauth"
+            - name: REL_PATH
+              value: "eks-anywhere-common/Addons/Partner/FusionAuth"
+            # Optional: namespace where FA will deploy (defaults to 'fusionauth')
+            - name: FA_NAMESPACE
+              value: "fusionauth"
+            # Optional: Secret discovery hints
+            - name: PRIMARY_SECRET_NAME
+              value: "fusionauth-secrets"     # expected key: FA_API_KEY
+            - name: FALLBACK_SECRET_NS
+              value: "source-secrets"         # fallback: fa-source-secrets / FA-api-key
+            - name: FALLBACK_SECRET_NAME
+              value: "fa-source-secrets"
+            - name: FALLBACK_SECRET_KEY
+              value: "FA-api-key"
+          command: ["/bin/bash","-ceu"]
+          args:
+            - |
+              echo "==> Installing test deps (git curl jq)…"
+              echo "==> Making Directory"
+              
+              mkdir -p /var/lib/apt/lists/partial
+              apt-get update -qq
+              
+              echo "==> Install Command"
+              apt-get install -y -qq curl jq git
+              
+              echo "==> Update Command"
+              apt-get update -qq && apt-get install -y -qq git curl jq >/dev/null
+
+              echo "==> Update Complete"
+      
+              work=/tmp/fa-e2e
+              mkdir -p "$work"
+              cd "$work"
+
+              echo "==> Cloning $GIT_URL (branch: $GIT_BRANCH)…"
+              git clone --depth=1 --branch "$GIT_BRANCH" "$GIT_URL" repo
+              
+              echo "==> Current working directory before cd:"
+              pwd
+              echo "==> Listing repo contents:"
+              ls -la repo
+              
+              cd "repo/${REL_PATH}"
+
+              echo "==> Applying FusionAuth stack from $(pwd)…"
+              kubectl apply -f . 1>/dev/null
+
+              echo "==> Waiting for namespace and workloads…"
+              ns="${FA_NAMESPACE:-fusionauth}"
+              # Wait for the namespace to exist
+              kubectl wait --for=condition=Established --timeout=120s crd/helmreleases.helm.toolkit.fluxcd.io || true
+              # Give controllers a head start
+              sleep 10
+
+              # If Flux HelmReleases are present, wait for them to settle (best-effort)
+              if kubectl -n "$ns" get helmrelease >/dev/null 2>&1; then
+                echo "==> Detected HelmReleases; waiting up to 10m for reconciliation…"
+                # generic wait loop: exit when all HRs Ready=True or timeout
+                end=$((SECONDS+600))
+                until [ $SECONDS -gt $end ]; do
+                  not_ready=$(kubectl -n "$ns" get hr -o json | jq -r '[.items[]|select(.status.conditions[]? | select(.type=="Ready" and .status!="True"))]|length')
+                  [ "$not_ready" = "0" ] && break
+                  sleep 10
+                done
+              fi
+
+              echo "==> Waiting for FusionAuth Deployment/Pods…"
+              # Try common labels/name patterns
+              sel='app.kubernetes.io/name=fusionauth'
+              if ! kubectl -n "$ns" get deploy -l "$sel" -o name | grep -q .; then
+                # fallback: release name prefix
+                sel='app.kubernetes.io/instance=fusionauth'
+              fi
+              # Wait for any matching Deployment(s) to be available
+              for d in $(kubectl -n "$ns" get deploy -l "$sel" -o name); do
+                kubectl -n "$ns" rollout status "$d" --timeout=10m || true
+              done
+
+              echo "==> Detecting FusionAuth Service & port…"
+              svc_json=$(kubectl -n "$ns" get svc -l "$sel" -o json)
+              svc_name=$(echo "$svc_json" | jq -r '.items[0].metadata.name // empty')
+              port=$(echo "$svc_json" | jq -r '.items[0].spec.ports[0].port // empty')
+              if [ -z "$svc_name" ] || [ -z "$port" ]; then
+                echo "ERROR: Could not locate FusionAuth Service/port with selector '$sel'." >&2
+                rc=1; goto_teardown=true
+              else
+                echo "    Service: $svc_name, port: $port"
+              fi
+
+              echo "==> Reading API key from Secret…"
+              api_key=""
+              # Primary: fusionauth-secrets / FA_API_KEY
+              if kubectl -n "$ns" get secret "$PRIMARY_SECRET_NAME" >/dev/null 2>&1; then
+                api_key=$(kubectl -n "$ns" get secret "$PRIMARY_SECRET_NAME" -o jsonpath='{.data.FA_API_KEY}' | base64 -d 2>/dev/null || true)
+              fi
+              # Fallback: source-secrets/fa-source-secrets / FA-api-key
+              if [ -z "$api_key" ] && kubectl -n "$FALLBACK_SECRET_NS" get secret "$FALLBACK_SECRET_NAME" >/dev/null 2>&1; then
+                api_key=$(kubectl -n "$FALLBACK_SECRET_NS" get secret "$FALLBACK_SECRET_NAME" -o jsonpath="{.data.${FALLBACK_SECRET_KEY}}" | base64 -d 2>/dev/null || true)
+              fi
+              echo "==> API KEY VALUE IS $api_key"
+              if [ -z "$api_key" ]; then
+                echo "ERROR: Could not retrieve FusionAuth API key from Secrets." >&2
+                rc=1; goto_teardown=true
+              fi
+
+              # If we’ve had a hard error, skip the call
+              if [ "${goto_teardown:-}" != "true" ]; then
+                echo "==> Probing FusionAuth API (expecting HTTP 200 and a tenants array)…"
+                base="http://${svc_name}.${ns}.svc.cluster.local:${port}"
+                echo "BASE URL is $base"
+                # /api/tenant requires API key and is a stable, low-risk read
+                http=$(curl -sS -w '%{http_code}' -o /tmp/fa.json \
+                  -H "Authorization: $api_key" \
+                  "${base}/api/tenant" || echo "000")
+                body=$(cat /tmp/fa.json || true)
+
+                if [ "$http" != "200" ]; then
+                  echo "FAIL: FusionAuth API returned HTTP ${http}. Body: $body"
+                  rc=1
+                else
+                  tenants=$(jq -r '.tenants | length // 0' /tmp/fa.json 2>/dev/null || echo 0)
+                  if [ "$tenants" -ge 1 ]; then
+                    echo "PASS: FusionAuth responded with ${tenants} tenant(s)."
+                    rc=0
+                  else
+                    echo "FAIL: FusionAuth responded but had no tenants. Body: $body"
+                    rc=1
+                  fi
+                fi
+              fi
+
+              echo "==> Tearing down FusionAuth stack…"
+              # Best-effort delete; don't fail the test on delete errors
+              kubectl delete -f . --timeout=5m --ignore-not-found || true
+
+              echo "==> Cleanup complete."
+              
+              ##echo "Tests finished with exit code ${rc:-1}. Sleeping for debug..."
+              ##sleep infinity
+              exit ${rc:-1}

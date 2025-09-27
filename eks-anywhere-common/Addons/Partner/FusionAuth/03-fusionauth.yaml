@@ -22,16 +22,21 @@ spec:
         namespace: flux-system
   targetNamespace: fusionauth
   values:
+    env:
+      - name: FA_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: fusionauth-secrets
+            key: FA_API_KEY
     # --- Database settings ---
     database:
       protocol: postgresql
       host: fusionauth-postgres-postgresql.fusionauth.svc.cluster.local
       port: 5432
       name: fusionauth
+
       existingSecret: fusionauth-secrets
-      # Application user (least-priv)
       user: fauser
-      password: changeMeSuperSecret2
       root:
         user: postgres
 
@@ -51,11 +56,12 @@ spec:
            "variables": {
              "defaultTenantId": "d7d09513-a3f5-401c-9685-34ab6c552453",
              "adminEmail": "admin@fusionauth.io",
-             "adminPassword": "password"
+             "adminPassword": "password",
+             "apiKey": "something-long-to-change-later"
            },
            "apiKeys": [
              {
-               "key": "bf69486b-4733-4470-a592-f1bfce7af580",
+               "key": "#{apiKey}",
                "description": "Core API Key"
              }
            ],
